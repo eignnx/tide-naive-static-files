@@ -29,9 +29,9 @@ impl StaticDirServer {
         StaticDirServer { root }
     }
 
-    fn stream_bytes(&self, actual_path: &str, headers: &HeaderMap) -> io::Result<Response> {
+    async fn stream_bytes(&self, actual_path: &str, headers: &HeaderMap) -> io::Result<Response> {
         let path = &self.get_path(actual_path);
-        let meta = task::block_on(fs::metadata(path)).ok();
+        let meta = fs::metadata(path).await.ok();
 
         // If the file doesn't exist, then bail out.
         let meta = match meta {
@@ -52,7 +52,7 @@ impl StaticDirServer {
                     .body_string("".into()));
             } else {
                 let index = Path::new(actual_path).join("index.html");
-                return self.stream_bytes(&*index.to_string_lossy(), headers);
+                return Box::pin(self.stream_bytes(&*index.to_string_lossy(), headers)).await;
             }
         }
 
@@ -60,7 +60,7 @@ impl StaticDirServer {
         let size = format!("{}", meta.len());
 
         // We're done with the checks. Stream file!
-        let file = task::block_on(fs::File::open(PathBuf::from(path))).unwrap();
+        let file = fs::File::open(PathBuf::from(path)).await.unwrap();
         let reader = io::BufReader::new(file);
         Ok(tide::Response::new(StatusCode::OK.as_u16())
             .body(reader)
@@ -91,24 +91,13 @@ impl StaticDirServer {
     }
 }
 
-pub async fn serve_static_files(ctx: Request<StaticDirServer>) -> Result {
+pub async fn serve_static_files(ctx: Request<StaticDirServer>) -> Response {
     let path = ctx.uri().path();
-    let resp = ctx.state().stream_bytes(path, ctx.headers());
-    match resp {
-        Err(_) => {
-            let resp = tide::Response::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16())
-                .set_header(header::CONTENT_TYPE.as_str(), mime::TEXT_HTML.as_ref())
-                .body_string(DEFAULT_5XX_BODY.into());
-            Ok(resp)
-        }
-        Ok(resp) => Ok(resp),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
+    let resp = ctx.state().stream_bytes(path, ctx.headers()).await;
+    resp.map_err(|_| {
+        tide::Response::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16())
+            .set_header(header::CONTENT_TYPE.as_str(), mime::TEXT_HTML.as_ref())
+            .body_string(DEFAULT_5XX_BODY.into())
+    })
+    .unwrap()
 }
