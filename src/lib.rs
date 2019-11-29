@@ -20,13 +20,13 @@ pub struct StaticDirServer {
 
 impl StaticDirServer {
     /// Creates a new instance of this handler.
-    pub fn new(root: impl AsRef<Path>) -> Self {
+    pub fn new(root: impl AsRef<Path>) -> std::result::Result<Self, String> {
         let root = PathBuf::from(root.as_ref());
         if !root.exists() {
-            // warn maybe?
+            Err(format!("Could not locate root directory {:?}", &root))
+        } else {
+            Ok(StaticDirServer { root })
         }
-
-        StaticDirServer { root }
     }
 
     fn stream_bytes(&self, actual_path: &str, headers: &HeaderMap) -> io::Result<Response> {
