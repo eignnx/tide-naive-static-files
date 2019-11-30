@@ -104,11 +104,3 @@ pub async fn serve_static_files(ctx: Request<StaticDirServer>) -> Result {
         Ok(resp) => Ok(resp),
     }
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
