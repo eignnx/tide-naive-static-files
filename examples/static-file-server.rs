@@ -1,5 +1,5 @@
 use async_std::task;
-use tide_static_files::{serve_static_files, StaticDirServer};
+use tide_naive_static_files::{serve_static_files, StaticDirServer};
 
 fn main() {
     let mut app = tide::with_state(StaticDirServer::new("./examples/").unwrap());
