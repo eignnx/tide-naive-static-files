@@ -9,8 +9,6 @@ use tide::{Request, Response, Result};
 use async_std::{fs, io, task};
 use std::path::{Component, Path, PathBuf};
 
-const DEFAULT_5XX_BODY: &str = "I'm broken, apparently.";
-
 pub trait StaticRootDir {
     fn root_dir(&self) -> &Path;
 }
@@ -93,10 +91,10 @@ pub async fn serve_static_files(ctx: Request<impl StaticRootDir>) -> Result {
     let root = ctx.state();
     let resp = stream_bytes(root, &path, ctx.headers());
     match resp {
-        Err(_) => {
+        Err(e) => {
             let resp = tide::Response::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16())
                 .set_header(header::CONTENT_TYPE.as_str(), mime::TEXT_HTML.as_ref())
-                .body_string(DEFAULT_5XX_BODY.into());
+                .body_string(format!("Internal server error: {}", e));
             Ok(resp)
         }
         Ok(resp) => Ok(resp),
