@@ -9,7 +9,6 @@ use tide::{Request, Response, Result};
 use async_std::{fs, io, task};
 use std::path::{Component, Path, PathBuf};
 
-const DEFAULT_4XX_BODY: &str = "Oops! I can't find what you're looking for...";
 const DEFAULT_5XX_BODY: &str = "I'm broken, apparently.";
 
 pub trait StaticRootDir {
@@ -36,7 +35,7 @@ fn stream_bytes(
         None => {
             return Ok(tide::Response::new(StatusCode::NOT_FOUND.as_u16())
                 .set_header(header::CONTENT_TYPE.as_str(), mime::TEXT_HTML.as_ref())
-                .body_string(DEFAULT_4XX_BODY.into()));
+                .body_string(format!("Couldn't locate file {:?}", actual_path)));
         }
     };
 
@@ -88,9 +87,11 @@ fn get_path(root: impl StaticRootDir, path: &str) -> PathBuf {
 }
 
 pub async fn serve_static_files(ctx: Request<impl StaticRootDir>) -> Result {
-    let path = ctx.uri().path();
+    let path: String = ctx.param("path").expect(
+        "`tide_naive_static_files::serve_static_files` requires a `*path` glob param at the end!",
+    );
     let root = ctx.state();
-    let resp = stream_bytes(root, path, ctx.headers());
+    let resp = stream_bytes(root, &path, ctx.headers());
     match resp {
         Err(_) => {
             let resp = tide::Response::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16())

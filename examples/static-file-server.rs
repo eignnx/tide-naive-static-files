@@ -18,7 +18,7 @@ async fn main() {
     };
 
     let mut app = tide::with_state(state);
-    app.at("/*")
+    app.at("static/*path")
         .get(|req| async { serve_static_files(req).await.unwrap() });
     app.listen("127.0.0.1:8000").await.unwrap();
 }

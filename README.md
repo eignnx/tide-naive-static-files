@@ -12,7 +12,7 @@ To use the library:
 
 1. Define some state for your server.
 2. Implement `StaticRootDir` on your state. This tells the library how to access the name of the root directory in which your static assets live.
-3. Set up a `get` endpoint with a glob pattern (`/my/path/for/static/assets/*`) and have it call the `serve_static_files` function.
+3. Set up a `get` endpoint with a `*path` glob pattern (like `/static/*path` or `/*path`) and have it call the `serve_static_files` function.
 
 ```rust
 use std::path::{Path, PathBuf};
@@ -35,7 +35,7 @@ async fn main() {
     };
 
     let mut app = tide::with_state(state);
-    app.at("/*") // 3.
+    app.at("/static/*path") // 3.
         .get(|req| async { serve_static_files(req).await.unwrap() });
     app.listen("127.0.0.1:8000").await.unwrap();
 }
