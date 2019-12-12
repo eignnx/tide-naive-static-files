@@ -43,4 +43,6 @@ async fn main() {
 
 ## Problems
 
+### Too many `task::block_on`s
+
 Right now it kinda doesn't use all the async-y-ness that it probably could. There are a couple of unfortunate `task::block_on`s that I want to get rid of. Suggestions welcome!
