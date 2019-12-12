@@ -92,9 +92,10 @@ pub async fn serve_static_files(ctx: Request<impl StaticRootDir>) -> Result {
     let resp = stream_bytes(root, &path, ctx.headers());
     match resp {
         Err(e) => {
+            eprintln!("tide-naive-static-files internal error: {}", e);
             let resp = tide::Response::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16())
                 .set_header(header::CONTENT_TYPE.as_str(), mime::TEXT_HTML.as_ref())
-                .body_string(format!("Internal server error: {}", e));
+                .body_string("Internal server error!".into());
             Ok(resp)
         }
         Ok(resp) => Ok(resp),
