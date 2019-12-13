@@ -10,7 +10,7 @@ This crate is not officially associated with the [`tide`](https://github.com/htt
 
 ## Note on Version Numbers
 
-Mistakes were made when initially selecting verion numbers for this crate. In the Rust ecosystem, a 1.0.0 release generally means the crate is *fit for production.* **This crate makes no such claim.** It would be best to "divide by ten" when looking at the crate's version number (i.e. 2.0.1 should be thought of as 0.2.0.1).
+Mistakes were made when initially selecting version numbers for this crate. In the Rust ecosystem, a 1.0.0 release generally means the crate is *fit for production.* **This crate makes no such claim.** It would be best to "divide by ten" when looking at the crate's version number (i.e. 2.0.1 should be thought of as 0.2.0.1).
 
 ## Example
 
