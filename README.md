@@ -6,6 +6,12 @@ A simple static file serving component for Rust's Tide web framework.
 
 This code is based heavily on [this archived example](https://github.com/http-rs/tide/blob/4aec5fe2bb6b8202f7ae48e416eeb37345cf029f/backup/examples/staticfile.rs).
 
+This crate is not officially associated with the [`tide`](https://github.com/http-rs/tide) project, it's more of an interim solution while `tide` is still in a state of (relative) flux.
+
+## Note on Version Numbers
+
+Mistakes were made when initially selecting verion numbers for this crate. In the Rust ecosystem, a 1.0.0 release generally means the crate is *fit for production.* **This crate makes no such claim.** It would be best to "divide by ten" when looking at the crate's version number (i.e. 2.0.1 should be thought of as 0.2.0.1).
+
 ## Example
 
 To use the library:
