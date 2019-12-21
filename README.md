@@ -23,6 +23,7 @@ To use the library:
 ```rust
 use std::path::{Path, PathBuf};
 use tide_naive_static_files::{serve_static_files, StaticRootDir};
+use async_std::task;
 
 struct AppState { // 1.
     static_root_dir: PathBuf,
@@ -34,8 +35,7 @@ impl StaticRootDir for AppState { // 2.
     }
 }
 
-#[async_std::main]
-async fn main() {
+fn main() {
     let state = AppState {
         static_root_dir: "./examples/".into(),
     };
@@ -43,7 +43,10 @@ async fn main() {
     let mut app = tide::with_state(state);
     app.at("/static/*path") // 3.
         .get(|req| async { serve_static_files(req).await.unwrap() });
-    app.listen("127.0.0.1:8000").await.unwrap();
+
+    task::block_on(async move {
+        app.listen("127.0.0.1:8000").await.unwrap();
+    })
 }
 ```
 
