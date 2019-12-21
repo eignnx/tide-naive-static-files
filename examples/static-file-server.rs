@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 use tide_naive_static_files::{serve_static_files, StaticRootDir};
+use async_std::task;
 
 struct AppState {
     static_root_dir: PathBuf,
@@ -20,7 +21,7 @@ fn main() {
     app.at("static/*path")
         .get(|req| async { serve_static_files(req).await.unwrap() });
 
-    async_std::task::block_on(async move {
-        app.listen("127.0.0.1:8000").await
+    task::block_on(async move {
+        app.listen("127.0.0.1:8000").await.unwrap()
     });
 }
