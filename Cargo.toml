@@ -16,7 +16,7 @@ keywords = ["tide", "static", "files"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tide = "0.5.1"
+tide = { version = "0.5.1", features  = ["unstable"] }
 http = "0.1.20"
 bytes = "0.5.3"
 futures-fs = "0.0.5"

@@ -4,10 +4,14 @@ use http::{
     header::{self, HeaderMap},
     StatusCode,
 };
-use tide::{Request, Response, Result};
+use tide::{Endpoint, Request, Response, Result};
 
 use async_std::{fs, io, task};
 use std::path::{Component, Path, PathBuf};
+use async_std::future;
+use async_std::task::{Context, Poll};
+
+use std::pin::Pin;
 
 pub trait StaticRootDir {
     fn root_dir(&self) -> &Path;
@@ -20,7 +24,7 @@ impl<T: StaticRootDir> StaticRootDir for &T {
 }
 
 fn stream_bytes(
-    root: impl StaticRootDir,
+    root: &Path,
     actual_path: &str,
     headers: &HeaderMap,
 ) -> io::Result<Response> {
@@ -64,7 +68,7 @@ fn stream_bytes(
 
 /// Percent-decode, normalize path components and return the final path joined with root.
 /// See https://github.com/iron/staticfile/blob/master/src/requested_path.rs
-fn get_path(root: impl StaticRootDir, path: &str) -> PathBuf {
+fn get_path(root: &Path, path: &str) -> PathBuf {
     let rel_path = Path::new(path)
         .components()
         .fold(PathBuf::new(), |mut result, p| {
@@ -81,23 +85,41 @@ fn get_path(root: impl StaticRootDir, path: &str) -> PathBuf {
 
             result
         });
-    root.root_dir().join(rel_path)
+    root.join(rel_path)
 }
 
-pub async fn serve_static_files(ctx: Request<impl StaticRootDir>) -> Result {
-    let path: String = ctx.param("path").expect(
-        "`tide_naive_static_files::serve_static_files` requires a `*path` glob param at the end!",
-    );
-    let root = ctx.state();
-    let resp = stream_bytes(root, &path, ctx.headers());
-    match resp {
-        Err(e) => {
-            eprintln!("tide-naive-static-files internal error: {}", e);
-            let resp = tide::Response::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16())
-                .set_header(header::CONTENT_TYPE.as_str(), mime::TEXT_HTML.as_ref())
-                .body_string("Internal server error!".into());
-            Ok(resp)
+pub struct StaticFilesEndpoint {
+    pub root: PathBuf,
+}
+
+impl<State> Endpoint<State> for StaticFilesEndpoint {
+    type Fut = Future;
+
+    fn call(&self, ctx: Request<State>) -> Self::Fut {
+        let path = ctx.uri().path().to_string();
+
+        let resp = stream_bytes(&self.root, &path, ctx.headers());
+        match resp {
+            Err(e) => {
+                eprintln!("tide-naive-static-files internal error: {}", e);
+                let resp = tide::Response::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16())
+                    .set_header(header::CONTENT_TYPE.as_str(), mime::TEXT_HTML.as_ref())
+                    .body_string("Internal server error!".into());
+                Future { res: Some(resp) }
+            }
+            Ok(resp) => Future { res: Some(resp) }
         }
-        Ok(resp) => Ok(resp),
+    }
+}
+
+/// Future returned from `redirect`.
+pub struct Future {
+    res: Option<Response>,
+}
+
+impl future::Future for Future {
+    type Output = Response;
+    fn poll(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
+        Poll::Ready(self.res.take().unwrap())
     }
 }
