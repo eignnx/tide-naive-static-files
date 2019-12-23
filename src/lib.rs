@@ -27,14 +27,13 @@ async fn stream_bytes(root: PathBuf, actual_path: &str) -> io::Result<Response> 
     let meta = fs::metadata(path).await.ok();
 
     // If the file doesn't exist, then bail out.
-    let meta = match meta {
-        Some(m) => m,
-        None => {
-            return Ok(tide::Response::new(StatusCode::NOT_FOUND.as_u16())
-                .set_header(header::CONTENT_TYPE.as_str(), mime::TEXT_HTML.as_ref())
-                .body_string(format!("Couldn't locate file {:?}", actual_path)));
-        }
-    };
+    //
+    if meta.is_none() {
+        return Ok(tide::Response::new(StatusCode::NOT_FOUND.as_u16())
+            .set_header(header::CONTENT_TYPE.as_str(), mime::TEXT_HTML.as_ref())
+            .body_string(format!("Couldn't locate file {:?}", actual_path)));
+    }
+    let meta = meta.unwrap();
 
     // Handle if it's a directory containing `index.html`
     /*
@@ -46,7 +45,7 @@ async fn stream_bytes(root: PathBuf, actual_path: &str) -> io::Result<Response> 
                 .body_string("".into()));
         } else {
             let index = Path::new(actual_path).join("index.html");
-            return stream_bytes(root, &*index.to_string_lossy());
+            return stream_bytes(root, &*index.to_string_lossy()).await;
         }
     }
     */
