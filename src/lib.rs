@@ -5,29 +5,15 @@ use http::{
     StatusCode,
 };
 use tide::{Endpoint, Request, Response};
-
-use async_std::future;
-use async_std::{fs, io};
+use async_std::{future, fs, io};
 use std::path::{Component, Path, PathBuf};
-
 use std::pin::Pin;
-
-pub trait StaticRootDir {
-    fn root_dir(&self) -> &Path;
-}
-
-impl<T: StaticRootDir> StaticRootDir for &T {
-    fn root_dir(&self) -> &Path {
-        (*self).root_dir()
-    }
-}
 
 async fn stream_bytes(root: PathBuf, actual_path: &str) -> io::Result<Response> {
     let path = &get_path(&root, actual_path);
     let meta = fs::metadata(path).await.ok();
 
     // If the file doesn't exist, then bail out.
-    //
     if meta.is_none() {
         return Ok(tide::Response::new(StatusCode::NOT_FOUND.as_u16())
             .set_header(header::CONTENT_TYPE.as_str(), mime::TEXT_HTML.as_ref())
