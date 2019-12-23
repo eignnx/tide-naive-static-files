@@ -1,15 +1,14 @@
 //! Code heavily based on https://github.com/http-rs/tide/blob/4aec5fe2bb6b8202f7ae48e416eeb37345cf029f/backup/examples/staticfile.rs
 
 use http::{
-    header::{self, HeaderMap},
+    header::{self},
     StatusCode,
 };
-use tide::{Endpoint, Request, Response, Result};
+use tide::{Endpoint, Request, Response};
 
-use async_std::{fs, io, task};
-use std::path::{Component, Path, PathBuf};
 use async_std::future;
-use async_std::task::{Context, Poll};
+use async_std::{fs, io};
+use std::path::{Component, Path, PathBuf};
 
 use std::pin::Pin;
 
@@ -23,13 +22,9 @@ impl<T: StaticRootDir> StaticRootDir for &T {
     }
 }
 
-fn stream_bytes(
-    root: &Path,
-    actual_path: &str,
-    headers: &HeaderMap,
-) -> io::Result<Response> {
+async fn stream_bytes(root: PathBuf, actual_path: &str) -> io::Result<Response> {
     let path = &get_path(&root, actual_path);
-    let meta = task::block_on(fs::metadata(path)).ok();
+    let meta = fs::metadata(path).await.ok();
 
     // If the file doesn't exist, then bail out.
     let meta = match meta {
@@ -42,6 +37,7 @@ fn stream_bytes(
     };
 
     // Handle if it's a directory containing `index.html`
+    /*
     if !meta.is_file() {
         // Redirect if path is a dir and URL doesn't end with "/"
         if !actual_path.ends_with("/") {
@@ -50,15 +46,16 @@ fn stream_bytes(
                 .body_string("".into()));
         } else {
             let index = Path::new(actual_path).join("index.html");
-            return stream_bytes(root, &*index.to_string_lossy(), headers);
+            return stream_bytes(root, &*index.to_string_lossy());
         }
     }
+    */
 
     let mime = mime_guess::from_path(path).first_or_octet_stream();
     let size = format!("{}", meta.len());
 
     // We're done with the checks. Stream file!
-    let file = task::block_on(fs::File::open(PathBuf::from(path))).unwrap();
+    let file = fs::File::open(PathBuf::from(path)).await.unwrap();
     let reader = io::BufReader::new(file);
     Ok(tide::Response::new(StatusCode::OK.as_u16())
         .body(reader)
@@ -88,38 +85,30 @@ fn get_path(root: &Path, path: &str) -> PathBuf {
     root.join(rel_path)
 }
 
+type BoxFuture<T> = Pin<Box<dyn future::Future<Output = T> + Send>>;
+
 pub struct StaticFilesEndpoint {
     pub root: PathBuf,
 }
 
 impl<State> Endpoint<State> for StaticFilesEndpoint {
-    type Fut = Future;
+    type Fut = BoxFuture<Response>;
 
     fn call(&self, ctx: Request<State>) -> Self::Fut {
-        let path = ctx.uri().path().to_string();
+        let path = ctx.uri().to_string();
+        let root = self.root.clone();
 
-        let resp = stream_bytes(&self.root, &path, ctx.headers());
-        match resp {
-            Err(e) => {
+        Box::pin(async move {
+            stream_bytes(root, &path).await.unwrap_or_else(|e| {
                 eprintln!("tide-naive-static-files internal error: {}", e);
-                let resp = tide::Response::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16())
-                    .set_header(header::CONTENT_TYPE.as_str(), mime::TEXT_HTML.as_ref())
-                    .body_string("Internal server error!".into());
-                Future { res: Some(resp) }
-            }
-            Ok(resp) => Future { res: Some(resp) }
-        }
+                internal_server_error("Internal server error reading file")
+            })
+        })
     }
 }
 
-/// Future returned from `redirect`.
-pub struct Future {
-    res: Option<Response>,
-}
-
-impl future::Future for Future {
-    type Output = Response;
-    fn poll(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
-        Poll::Ready(self.res.take().unwrap())
-    }
+fn internal_server_error(body: &'static str) -> Response {
+    tide::Response::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16())
+        .set_header(header::CONTENT_TYPE.as_str(), mime::TEXT_HTML.as_ref())
+        .body_string(body.into())
 }
