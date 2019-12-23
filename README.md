@@ -16,42 +16,31 @@ Mistakes were made when initially selecting version numbers for this crate. In t
 
 To use the library:
 
-1. Define some state for your server.
-2. Implement `StaticRootDir` on your state. This tells the library how to access the name of the root directory in which your static assets live.
-3. Set up a `get` endpoint with a `*path` glob pattern (like `/static/*path` or `/*path`) and have it call the `serve_static_files` function.
+1. Define the route to hoste your assets under
+2. Stip the prefix so the routes match your files
+3. Set up a `get` endpoint awith the `StaticFilesEndpoint` making sure the `root` reprents the path from where you run the server to the root of your assets
 
 ```rust
-use std::path::{Path, PathBuf};
-use tide_naive_static_files::{serve_static_files, StaticRootDir};
 use async_std::task;
+use tide_naive_static_files::StaticFilesEndpoint;
 
-struct AppState { // 1.
-    static_root_dir: PathBuf,
-}
-
-impl StaticRootDir for AppState { // 2.
-    fn root_dir(&self) -> &Path {
-        &self.static_root_dir
-    }
-}
+struct AppState {}
 
 fn main() {
-    let state = AppState {
-        static_root_dir: "./examples/".into(),
-    };
+    let state = AppState {};
 
     let mut app = tide::with_state(state);
-    app.at("/static/*path") // 3.
-        .get(|req| async { serve_static_files(req).await.unwrap() });
+    app.at("/static") // 1.
+       .strip_prefix() // 2
+       .get(StaticFilesEndpoint {
+        root: "./examples/".into(), // 3. 
+    });
 
-    task::block_on(async move {
-        app.listen("127.0.0.1:8000").await.unwrap();
-    })
+    task::block_on(async move { app.listen("127.0.0.1:8000").await.unwrap() });
 }
 ```
 
 ## Problems
 
-### Too many `task::block_on`s
+* Handling of folders is currently commented out due to recursive futures
 
-Right now it kinda doesn't use all the async-y-ness that it probably could. There are a couple of unfortunate `task::block_on`s that I want to get rid of. Suggestions welcome!
