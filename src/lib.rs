@@ -1,13 +1,13 @@
 //! Code heavily based on https://github.com/http-rs/tide/blob/4aec5fe2bb6b8202f7ae48e416eeb37345cf029f/backup/examples/staticfile.rs
 
+use async_std::{fs, future, io};
 use http::{
     header::{self},
     StatusCode,
 };
-use tide::{Endpoint, Request, Response};
-use async_std::{future, fs, io};
 use std::path::{Component, Path, PathBuf};
 use std::pin::Pin;
+use tide::{Endpoint, Request, Response};
 
 async fn stream_bytes(root: PathBuf, actual_path: &str) -> io::Result<Response> {
     let path = &get_path(&root, actual_path);
