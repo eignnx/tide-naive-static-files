@@ -18,7 +18,7 @@ To use the library:
 
 1. Define the route to host your assets under
 2. Stip the prefix so the routes match your files
-3. Set up a `get` endpoint awith the `StaticFilesEndpoint` making sure the `root` reprents the path from where you run the server to the root of your assets
+3. Set up a `get` endpoint with the `StaticFilesEndpoint` making sure the `root` represents the path from where you run the server to the root of your assets
 
 ```rust
 use async_std::task;
