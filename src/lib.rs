@@ -10,37 +10,35 @@ use std::pin::Pin;
 use tide::{Endpoint, Request, Response};
 
 async fn stream_bytes(root: PathBuf, actual_path: &str) -> io::Result<Response> {
-    let path = &get_path(&root, actual_path);
-    let meta = fs::metadata(path).await.ok();
+    let mut path = get_path(&root, actual_path);
 
-    // If the file doesn't exist, then bail out.
-    if meta.is_none() {
-        return Ok(tide::Response::new(StatusCode::NOT_FOUND.as_u16())
-            .set_header(header::CONTENT_TYPE.as_str(), mime::TEXT_HTML.as_ref())
-            .body_string(format!("Couldn't locate file {:?}", actual_path)));
-    }
-    let meta = meta.unwrap();
+    // Loop if the path points to a directory because we want to try looking for
+    // an "index.html" file within that directory.
+    let (meta, path): (fs::Metadata, PathBuf) = loop {
+        let meta = fs::metadata(&path).await.ok();
 
-    // Handle if it's a directory containing `index.html`
-    /*
-    if !meta.is_file() {
-        // Redirect if path is a dir and URL doesn't end with "/"
-        if !actual_path.ends_with("/") {
-            return Ok(tide::Response::new(StatusCode::MOVED_PERMANENTLY.as_u16())
-                .set_header(header::LOCATION.as_str(), String::from(actual_path) + "/")
-                .body_string("".into()));
-        } else {
-            let index = Path::new(actual_path).join("index.html");
-            return stream_bytes(root, &*index.to_string_lossy()).await;
+        // If the file doesn't exist, then bail out.
+        if meta.is_none() {
+            return Ok(tide::Response::new(StatusCode::NOT_FOUND.as_u16())
+                .set_header(header::CONTENT_TYPE.as_str(), mime::TEXT_HTML.as_ref())
+                .body_string(format!("Couldn't locate requested file {:?}", actual_path)));
         }
-    }
-    */
+        let meta = meta.unwrap();
 
-    let mime = mime_guess::from_path(path).first_or_octet_stream();
+        // If the path points to a directory, look for an "index.html" file.
+        if !meta.is_file() {
+            path.push("index.html");
+            continue; // Try again.
+        } else {
+            break (meta, path);
+        }
+    };
+
+    let mime = mime_guess::from_path(&path).first_or_octet_stream();
     let size = format!("{}", meta.len());
 
     // We're done with the checks. Stream file!
-    let file = fs::File::open(PathBuf::from(path)).await.unwrap();
+    let file = fs::File::open(PathBuf::from(&path)).await.unwrap();
     let reader = io::BufReader::new(file);
     Ok(tide::Response::new(StatusCode::OK.as_u16())
         .body(reader)
