@@ -16,7 +16,7 @@ Mistakes were made when initially selecting version numbers for this crate. In t
 
 To use the library:
 
-1. Define the route to hoste your assets under
+1. Define the route to host your assets under
 2. Stip the prefix so the routes match your files
 3. Set up a `get` endpoint awith the `StaticFilesEndpoint` making sure the `root` reprents the path from where you run the server to the root of your assets
 
@@ -33,7 +33,7 @@ fn main() {
     app.at("/static") // 1.
        .strip_prefix() // 2
        .get(StaticFilesEndpoint {
-        root: "./examples/".into(), // 3. 
+        root: "./examples/".into(), // 3.
     });
 
     task::block_on(async move { app.listen("127.0.0.1:8000").await.unwrap() });
