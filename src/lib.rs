@@ -1,13 +1,23 @@
 //! Code heavily based on https://github.com/http-rs/tide/blob/4aec5fe2bb6b8202f7ae48e416eeb37345cf029f/backup/examples/staticfile.rs
 
-use async_std::{fs, future, io};
+use async_std::{fs, future, io, task};
 use http::{
     header::{self},
     StatusCode,
 };
 use std::path::{Component, Path, PathBuf};
 use std::pin::Pin;
-use tide::{Endpoint, Request, Response};
+use tide::{Endpoint, Request, Response, Result};
+
+pub trait StaticRootDir {
+    fn root_dir(&self) -> &Path;
+}
+
+impl<T: StaticRootDir> StaticRootDir for &T {
+    fn root_dir(&self) -> &Path {
+        (*self).root_dir()
+    }
+}
 
 async fn stream_bytes(root: PathBuf, actual_path: &str) -> io::Result<Response> {
     let mut path = get_path(&root, actual_path);
@@ -66,6 +76,21 @@ fn get_path(root: &Path, path: &str) -> PathBuf {
             result
         });
     root.join(rel_path)
+}
+
+pub async fn serve_static_files(ctx: Request<impl StaticRootDir>) -> Result {
+    let path: String = ctx.param("path").expect(
+        "`tide_naive_static_files::serve_static_files` requires a `*path` glob param at the end!",
+    );
+    let root = ctx.state();
+    let resp = task::block_on(async move {
+        stream_bytes(PathBuf::from(root.root_dir()), &path).await
+    }).unwrap_or_else(|e| {
+        eprintln!("tide-naive-static-files internal error: {}", e);
+        internal_server_error("Internal server error reading file")
+    });
+
+    Ok(resp)
 }
 
 type BoxFuture<T> = Pin<Box<dyn future::Future<Output = T> + Send>>;
