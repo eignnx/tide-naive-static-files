@@ -39,3 +39,10 @@ fn main() {
     task::block_on(async move { app.listen("127.0.0.1:8000").await.unwrap() });
 }
 ```
+
+## Contributors
+
+- [eignnx](https://github.com/eignnx)
+- Felipe Seré, [felipesere](https://github.com/felipesere)
+
+If you're interested in contributing to the project, please see our [CONTRIBUTING.md](https://github.com/eignnx/tide-naive-static-files/blob/master/CONTRIBUTING.md) file!
