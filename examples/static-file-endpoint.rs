@@ -1,12 +1,8 @@
 use async_std::task;
 use tide_naive_static_files::StaticFilesEndpoint;
 
-struct AppState {}
-
 fn main() {
-    let state = AppState {};
-
-    let mut app = tide::with_state(state);
+    let mut app = tide::new();
     app.at("/static").strip_prefix().get(StaticFilesEndpoint {
         root: "./examples/".into(),
     });

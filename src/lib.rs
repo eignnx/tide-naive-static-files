@@ -9,6 +9,24 @@ use std::path::{Component, Path, PathBuf};
 use std::pin::Pin;
 use tide::{Endpoint, Request, Response, Result};
 
+/// A trait that provides a way to get a [`&Path`](std::path::Path) to your static
+/// assets directory from your tide app's state. Meant to be used with the
+/// [`serve_static_files`] function.
+///
+/// [`serve_static_files`]: tide_naive_static_files::serve_static_files
+///
+/// ```no_run
+/// use std::path::Path;
+/// use tide_naive_static_files::StaticRootDir;
+///
+/// struct MyState;
+///
+/// impl StaticRootDir for MyState {
+///     fn root_dir(&self) -> &Path {
+///         Path::new("./my-static-assets-dir")
+///     }
+/// }
+/// ```
 pub trait StaticRootDir {
     fn root_dir(&self) -> &Path;
 }
@@ -78,26 +96,73 @@ fn get_path(root: &Path, path: &str) -> PathBuf {
     root.join(rel_path)
 }
 
+/// Use in a tide [`tide::Route::get`](tide::Route::get) handler to serve static files from an
+/// endpoint. In order to use this function, your tide app's state must
+/// implement the [`StaticRootDir`](tide_naive_static_files::StaticRootDir) trait.
+///
+/// The static assets will be served from the route provided to the `app.at`
+/// function. In the example below, the file `./my-static-asset-dir/foo.html`
+/// would be obtainable by making a GET request to
+/// `http://my.server.address/static/foo.html`.
+///
+/// ```no_run
+/// use std::path::Path;
+/// use tide_naive_static_files::{StaticRootDir, serve_static_files};
+///
+/// struct MyState;
+///
+/// impl StaticRootDir for MyState {
+///     fn root_dir(&self) -> &Path {
+///         Path::new("./my-static-asset-dir")
+///     }
+/// }
+///
+/// # fn main() {
+/// let state = MyState;
+/// let mut app = tide::with_state(state);
+/// app.at("static/*path")
+///     .get(|req| async { serve_static_files(req).await.unwrap() });
+/// # }
+/// ```
 pub async fn serve_static_files(ctx: Request<impl StaticRootDir>) -> Result {
     let path: String = ctx.param("path").expect(
         "`tide_naive_static_files::serve_static_files` requires a `*path` glob param at the end!",
     );
     let root = ctx.state();
-    let resp = task::block_on(async move {
-        stream_bytes(PathBuf::from(root.root_dir()), &path).await
-    }).unwrap_or_else(|e| {
-        eprintln!("tide-naive-static-files internal error: {}", e);
-        internal_server_error("Internal server error reading file")
-    });
+    let resp =
+        task::block_on(async move { stream_bytes(PathBuf::from(root.root_dir()), &path).await })
+            .unwrap_or_else(|e| {
+                eprintln!("tide-naive-static-files internal error: {}", e);
+                internal_server_error("Internal server error reading file")
+            });
 
     Ok(resp)
 }
 
-type BoxFuture<T> = Pin<Box<dyn future::Future<Output = T> + Send>>;
-
+/// A struct that holds a path to your app's static assets directory. This
+/// struct implements [`tide::Endpoint`](tide::Endpoint) so it can be passed directly to
+/// [`tide::Route::get`](tide::Route::get).
+///
+/// The static assets will be served from the route provided to the `app.at`. In
+/// the example below, the file `./my-static-asset-dir/foo.html` would be
+/// obtainable by making a GET request to
+/// `http://my.server.address/static/foo.html`.
+///
+/// ```no_run
+/// use tide_naive_static_files::StaticFilesEndpoint;
+///
+/// # fn main() {
+/// let mut app = tide::new();
+/// app.at("/static").strip_prefix().get(StaticFilesEndpoint {
+///     root: "./my-static-asset-dir/".into(),
+/// });
+/// # }
+/// ```
 pub struct StaticFilesEndpoint {
     pub root: PathBuf,
 }
+
+type BoxFuture<T> = Pin<Box<dyn future::Future<Output = T> + Send>>;
 
 impl<State> Endpoint<State> for StaticFilesEndpoint {
     type Fut = BoxFuture<Response>;
