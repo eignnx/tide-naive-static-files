@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Refactor examples for clarity.
+
 ## [2.2.0] - 202-02-28
 ### Changed
 - Rely on `tide` version 0.6.0 (up from 0.5.1).

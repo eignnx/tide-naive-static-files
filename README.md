@@ -30,6 +30,7 @@ fn main() {
     let state = AppState {};
 
     let mut app = tide::with_state(state);
+
     app.at("/static") // 1.
        .strip_prefix() // 2
        .get(StaticFilesEndpoint {
