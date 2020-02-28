@@ -12,4 +12,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rely on `tide` version 0.6.0 (up from 0.5.1).
 - Rearrange example directory a bit. Test `.html` files are now in their own subdirectory.
 ### Removed
-- The library itself no longer depends on unstable `tide` features, only the example programs have such a dependency. Thanks to @eribol bringing up this problem in issue #4.
+- The library itself no longer depends on unstable `tide` features, only the example programs have such a dependency. Thanks to @eribol for bringing up this problem in [issue #4](https://github.com/eignnx/tide-naive-static-files/issues/4).
