@@ -24,20 +24,16 @@ To use the library:
 use async_std::task;
 use tide_naive_static_files::StaticFilesEndpoint;
 
-struct AppState {}
-
 fn main() {
-    let state = AppState {};
-
-    let mut app = tide::with_state(state);
+    let mut app = tide::new();
 
     app.at("/static") // 1.
        .strip_prefix() // 2
        .get(StaticFilesEndpoint {
-        root: "./examples/".into(), // 3.
-    });
+            root: "./examples/".into(), // 3.
+        });
 
-    task::block_on(async move { app.listen("127.0.0.1:8000").await.unwrap() });
+    task::block_on(app.listen("127.0.0.1:8000")).unwrap();
 }
 ```
 

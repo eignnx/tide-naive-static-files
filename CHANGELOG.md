@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Refactor README example.
 - Refactor examples for clarity.
 
 ## [2.2.0] - 202-02-28
